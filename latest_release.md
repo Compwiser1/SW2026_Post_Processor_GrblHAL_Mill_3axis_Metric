@@ -1,3 +1,9 @@
+## v1.0.4
+
+Fourth pipeline verification test — confirming the zip naming convention
+change (SW26_GrblHAL_Mill_3axis_Metric vX.Y.Z per delivery) alongside the
+now-default combined bump-release.sh + attach-ctl.sh instruction flow.
+
 ## v1.0.3
 
 Third pipeline verification test — confirming the streamlined
@@ -26,17 +32,7 @@ First release under the new repo structure and versioning scheme:
   `; Post Version:` stamp are now kept in lockstep by
   `.scripts/bump-release.sh` on every future release.
 - **Filenames stabilized.** `.SRC`/`.LIB`/`.lng` no longer embed a date in
-  the filename (`SW26_GrblHAL_Mill_3axis_Metric.SRC`, not
-  `..._2026_07_12-D.SRC`), matching the GitHub repo convention.
-- **Fixed a real bug found during this migration**: the `.SRC` file's
-  `:LIBRARY=` self-reference had drifted from the actual `.LIB` filename
-  (a dot/underscore mismatch in the embedded date), which would have
-  broken the compiler's ability to resolve the include. Corrected as part
-  of the filename stabilization.
+  the filename, matching the GitHub repo convention.
 - **Release process is now automated via GitHub Actions.**
 
-No functional G-code output changes in this release — this is a tooling
-and process migration only. All prior fixes (radial-arc mode, sliver-arc
-gouge-risk fix, machine-time accuracy fix, program-start Z-move safety fix)
-carry forward unchanged from the source this was migrated from
-(`2026.07.12-D`).
+No functional G-code output changes carried forward from `2026.07.12-D`.
