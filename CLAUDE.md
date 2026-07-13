@@ -90,18 +90,28 @@ compiled output or hardware. Do not reintroduce them.
   bump both together, but do NOT push a tag yourself — tagging, version-
   bumping, and stamp updates are all done locally via
   `.scripts/bump-release.sh`, by the maintainer.
-- `.github/workflows/release-build.yml` triggers on tag push, builds a
-  **Source zip** (`<post_id>-Source-v<version>.zip`, containing only
-  `.SRC`/`.LIB`/`.lng`/`LICENSE` — nothing else), and creates the GitHub
-  Release as a **draft**. `.scripts/attach-ctl.sh` later adds a
-  **Compiled zip** (`<post_id>-Compiled-v<version>.zip`, containing only
-  the `.ctl`) and publishes. A finished release has exactly those two
-  custom assets, plus GitHub's own auto-generated "Source code
-  (zip)"/"(tar.gz)" links — that pair is a GitHub platform feature on
-  every tag, not something this workflow creates or can suppress. Never
+- `.github/workflows/release-build.yml` triggers on tag push, validates
+  everything (tag/version match, compile-tripwire stamp, per-file content
+  sanity), and creates an **empty draft release** — no zip built here,
+  since the final archive needs the compiled `.ctl`, which doesn't exist
+  yet at this point. `.scripts/attach-ctl.sh` is the only place a zip
+  ever gets built: **one single zip**
+  (`<post_id>-v<version>.zip`, flat structure) containing exactly
+  `.SRC`, `.LIB`, `.lng`, `LICENSE`, and the compiled `.ctl` — then
+  publishes. GitHub also auto-generates its own "Source code
+  (zip)"/"(tar.gz)" links covering the *entire repo tree* on every tag —
+  that's an unrelated GitHub platform feature with no way to suppress or
+  scope down, not something this workflow creates or controls. Never
   attempt to make a release non-draft, edit release publish status, or
   attach a `.ctl` file — that is exclusively done locally via
   `.scripts/attach-ctl.sh` after real hardware verification.
+- **Release titles currently include a `[EXPERIMENTAL]` suffix**
+  (`<post_id> v<version> [EXPERIMENTAL]`), intentionally, until the
+  maintainer decides to drop it — don't remove it unprompted.
+- **Release notes are the current version only**, extracted as the
+  topmost `## vX.X.X` section of `latest_release.md` — never the full
+  running changelog history. If asked to review release notes, keep this
+  scoping in mind.
 - If asked to review or update `FrankenOKO_Post_Notes.md` or
   `latest_release.md`, preserve the existing convention: `latest_release.md`
   is a per-release changelog (newest section on top, becomes the GitHub

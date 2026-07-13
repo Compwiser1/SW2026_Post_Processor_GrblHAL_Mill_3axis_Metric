@@ -13,20 +13,21 @@
 # or attach a .ctl that hasn't been through all four.
 #
 # What it does:
-#   1. Zips the given .ctl file into its own archive
-#      (<post_id>-Compiled-v<version>.zip)
-#   2. Uploads that zip as an asset on the existing draft release
-#   3. Publishes the release (removes draft status), making it public
+#   1. Builds ONE zip (<post_id>-v<version>.zip) containing exactly:
+#      .SRC, .LIB, .lng, LICENSE, and the given .ctl
+#   2. Uploads that zip as the release's only custom asset
+#   3. Replaces the draft placeholder notes with the real current-version
+#      release notes (top section of latest_release.md only — not a
+#      running changelog)
+#   4. Publishes the release (removes draft status), making it public
 #
-# The release ends up with exactly two custom assets: the Compiled zip
-# (this script) and the Source zip (built by release-build.yml from
-# .SRC/.LIB/.lng/LICENSE only). GitHub also auto-generates its own
-# "Source code (zip)"/"(tar.gz)" links on every tag — that's a GitHub
-# platform feature with no API option to suppress, unrelated to and
-# separate from the two zips this project actually publishes.
+# GitHub also auto-generates its own "Source code (zip)"/"(tar.gz)" links
+# on every tag — that's a GitHub platform feature covering the ENTIRE repo
+# tree, with no API option to suppress or scope down. It's separate from,
+# and unrelated to, the one curated zip this script builds.
 #
 # Usage:
-#   .scripts/attach-ctl.sh v1.0.0 /path/to/SW26_GrblHAL_Mill_3axis_Metric.ctl
+#   .scripts/attach-ctl.sh v1.0.0 SW26_GrblHAL_Mill_3axis_Metric.ctl
 #
 # Requires: GitHub CLI (gh), authenticated (gh auth login) with write access
 # to this repo, and jq.
@@ -35,7 +36,7 @@ set -euo pipefail
 
 if [ $# -ne 2 ]; then
   echo "Usage: $0 <tag> <path-to-ctl-file>" >&2
-  echo "Example: $0 v1.0.0 /path/to/SW26_GrblHAL_Mill_3axis_Metric.ctl" >&2
+  echo "Example: $0 v1.0.0 SW26_GrblHAL_Mill_3axis_Metric.ctl" >&2
   exit 1
 fi
 
@@ -70,8 +71,20 @@ fi
 POST_ID=$(jq -r '.id' post.json)
 VERSION="${TAG#v}"
 
+SRC_FILE=$(find . -maxdepth 1 -name '*.SRC' | head -n1)
+LIB_FILE=$(find . -maxdepth 1 -name '*.LIB' | head -n1)
+LNG_FILE=$(find . -maxdepth 1 -name '*.lng' | head -n1)
+
+for f in "$SRC_FILE" "$LIB_FILE" "$LNG_FILE" LICENSE; do
+  if [ -z "$f" ] || [ ! -f "$f" ]; then
+    echo "Error: required file missing at repo root: ${f:-<.SRC/.LIB/.lng not found>}" >&2
+    exit 1
+  fi
+done
+
 echo "Release: $TAG"
 echo "Compiled .ctl: $CTL_PATH"
+echo "Will bundle: $(basename "$SRC_FILE"), $(basename "$LIB_FILE"), $(basename "$LNG_FILE"), LICENSE, $(basename "$CTL_PATH")"
 echo ""
 echo "By running this you are confirming the .ctl has been recompiled,"
 echo "stamp-verified, test-posted, and hardware-tested on FrankenOKO."
@@ -84,17 +97,26 @@ fi
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
-CTL_FILENAME=$(basename "$CTL_PATH")
-cp "$CTL_PATH" "$TMP_DIR/$CTL_FILENAME"
+cp "$SRC_FILE" "$LIB_FILE" "$LNG_FILE" LICENSE "$CTL_PATH" "$TMP_DIR/"
 
-ZIP_NAME="${POST_ID}-Compiled-v${VERSION}.zip"
+ZIP_NAME="${POST_ID}-v${VERSION}.zip"
 ZIP_PATH="$TMP_DIR/$ZIP_NAME"
-(cd "$TMP_DIR" && zip -j "$ZIP_NAME" "$CTL_FILENAME")
+(cd "$TMP_DIR" && zip -j "$(basename "$ZIP_PATH")" \
+  "$(basename "$SRC_FILE")" "$(basename "$LIB_FILE")" "$(basename "$LNG_FILE")" \
+  LICENSE "$(basename "$CTL_PATH")")
 
 echo "Built: $ZIP_NAME"
 
+# Regenerate release notes from latest_release.md — only the current
+# (topmost) version section, never the running changelog history.
+if [ -f latest_release.md ]; then
+  NOTES=$(awk '/^## /{if (seen) exit; seen=1} seen' latest_release.md)
+else
+  NOTES="Release ${VERSION}"
+fi
+
 gh release upload "$TAG" "$ZIP_PATH" --clobber
-gh release edit "$TAG" --draft=false
+gh release edit "$TAG" --notes "$NOTES" --draft=false
 
 echo ""
 echo "Published: $TAG is now live on GitHub Releases with $ZIP_NAME attached."

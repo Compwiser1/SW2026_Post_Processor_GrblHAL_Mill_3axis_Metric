@@ -15,16 +15,20 @@ name: Build and Draft Release (Source Only)
 #
 # IMPORTANT: The .ctl binary CANNOT be built here. The UPG-2 Post Processor
 # Editor is a local, GUI-only, Windows-side compiler with no CLI/API — it
-# does not exist in this runner's environment. This workflow packages
-# SOURCE ONLY and creates the release as a DRAFT. The release stays a draft,
-# unpublished and not publicly visible, until you have:
+# does not exist in this runner's environment. This workflow validates
+# source (tag/version match, compile-tripwire stamp, per-file content
+# sanity) and creates an EMPTY DRAFT release — no zip is built here, since
+# the final release archive includes the compiled .ctl, which doesn't
+# exist yet at this point. The release stays a draft, unpublished and not
+# publicly visible, until you have:
 #   1. Compiled the .ctl locally in the Post Processor Editor
 #   2. Confirmed the version stamp posts correctly (the compile tripwire)
 #   3. Posted a test job and reviewed the NC output
 #   4. Run it on FrankenOKO and confirmed no gouging / correct behavior
-#   5. Run .scripts/attach-ctl.sh to attach the .ctl and publish the release
+#   5. Run .scripts/attach-ctl.sh, which builds the single release zip
+#      (.SRC/.LIB/.lng/LICENSE/.ctl), attaches it, and publishes
 #
-# Never bypass the draft gate. A published release with no attached .ctl,
+# Never bypass the draft gate. A published release with no attached zip,
 # or one attached from an untested compile, is a released hazard, not a
 # convenience.
 on:
@@ -121,55 +125,21 @@ jobs:
 
           echo "All checked files contain their expected content signatures."
 
-      - name: Build source release zip (SRC/LIB/lng/LICENSE only)
-        id: zip
+      - name: Create draft GitHub Release
         run: |
           POST_ID="${{ steps.post.outputs.post_id }}"
           VERSION="${{ steps.post.outputs.version }}"
-          SRC_FILE=$(find . -maxdepth 1 -name '*.SRC' | head -n1)
-          LIB_FILE=$(find . -maxdepth 1 -name '*.LIB' | head -n1)
-          LNG_FILE=$(find . -maxdepth 1 -name '*.lng' | head -n1)
+          TAG="${{ github.ref_name }}"
 
-          if [ ! -f LICENSE ]; then
-            echo "::error::LICENSE file not found at repo root."
-            exit 1
-          fi
+          # NOTE: [EXPERIMENTAL] is intentional and temporary — remove this
+          # suffix from the release title once the project leaves its
+          # experimental phase (maintainer's call, not automatic).
+          TITLE="${POST_ID} v${VERSION} [EXPERIMENTAL]"
+          BODY="Draft — awaiting .scripts/attach-ctl.sh to build and attach the release archive (source + compiled .ctl) after local compile and hardware verification."
 
-          mkdir -p "tmp/$POST_ID" dist
-          cp "$SRC_FILE" "$LIB_FILE" "$LNG_FILE" LICENSE "tmp/$POST_ID/"
-
-          ZIP_NAME="${POST_ID}-Source-v${VERSION}.zip"
-          (cd tmp && zip -r "../dist/${ZIP_NAME}" "${POST_ID}")
-          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
-          echo "zip_path=dist/${ZIP_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Get release notes
-        id: notes
-        run: |
-          if [ -f latest_release.md ]; then
-            # latest_release.md is a cumulative changelog (newest section on
-            # top). Publish ONLY the topmost "## vX.X.X" section as this
-            # release's notes, not the whole history.
-            SECTION=$(awk '/^## /{if (seen) exit; seen=1} seen' latest_release.md)
-            {
-              echo 'body<<RELEASE_NOTES_EOF'
-              echo "$SECTION"
-              echo ""
-              echo "---"
-              echo "*This release is a draft until the compiled .ctl is attached via .scripts/attach-ctl.sh, after local compile + hardware verification.*"
-              echo 'RELEASE_NOTES_EOF'
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "body=Release ${{ steps.post.outputs.version }}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create draft GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ steps.post.outputs.post_id }} v${{ steps.post.outputs.version }}
-          body: ${{ steps.notes.outputs.body }}
-          draft: true
-          files: |
-            ${{ steps.zip.outputs.zip_path }}
-          fail_on_unmatched_files: true
+          gh release create "$TAG" \
+            --title "$TITLE" \
+            --notes "$BODY" \
+            --draft
+        env:
+          GH_TOKEN: ${{ github.token }}

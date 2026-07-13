@@ -97,8 +97,9 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Check the Actions tab — `release-build.yml` should run and create a
-**draft** release with a Source zip attached (`SW26_GrblHAL_Mill_3axis_Metric-Source-v1.0.0.zip`, containing only `.SRC`/`.LIB`/`.lng`/`LICENSE`).
+Check the Actions tab — `release-build.yml` should run and create an
+**empty draft** release (no assets yet — the final zip needs the
+compiled `.ctl`, built by `attach-ctl.sh` instead).
 
 Then, same as always: compile locally in the Post Processor Editor, verify
 the stamp reads `1.0.0`, test-post, hardware-test. Once you're satisfied:
@@ -107,11 +108,12 @@ the stamp reads `1.0.0`, test-post, hardware-test. Once you're satisfied:
 .scripts/attach-ctl.sh v1.0.0 /path/to/compiled.ctl
 ```
 
-That publishes the release with both the Source zip and a new Compiled
-zip (`SW26_GrblHAL_Mill_3axis_Metric-Compiled-v1.0.0.zip`, containing the
-`.ctl`) attached — plus GitHub's own auto-generated "Source code
-(zip)"/"(tar.gz)" links, which appear on every tag automatically and
-can't be turned off. Every release after this one goes through
+That builds and attaches a single zip
+(`SW26_GrblHAL_Mill_3axis_Metric-v1.0.0.zip`, containing `.SRC`, `.LIB`,
+`.lng`, `LICENSE`, and the `.ctl`) and publishes — plus GitHub's own
+auto-generated "Source code (zip)"/"(tar.gz)" links, which appear on
+every tag automatically, cover the entire repo tree, and can't be turned
+off or scoped down. Every release after this one goes through
 `.scripts/bump-release.sh` instead of a manual tag.
 
 That closes the loop: chat produces source + notes → you push → CI stages a
