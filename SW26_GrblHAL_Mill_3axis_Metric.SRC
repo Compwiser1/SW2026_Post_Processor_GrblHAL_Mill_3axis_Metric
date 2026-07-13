@@ -256,7 +256,7 @@
 :T:; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<EOL>
 :T:; Post Processor Name: SW2026 FrankenOKO GRBL Metric Mill<EOL>
 :T:; Author: Compwiser1<EOL>
-:T:; Post Version: 1.0.4<EOL>
+:T:; Post Version: 1.0.5<EOL>
 :T:; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<EOL>
 :T:;     PROGRAM OVERVIEW<EOL>
 :T:; ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~<EOL>
@@ -282,11 +282,25 @@
 * the home corner when the spindle was parked above the clearance
 * plane). G91 G28 Z0 is always up-or-stay - same proven idiom used at
 * every mid-program tool change (SUB_TOOL_CHANGE_MILL) and program end.
-* G00 on the retract line establishes the motion mode the first bare
-* X/Y rapid of operation 1 relies on. Per-operation approach order (X/Y
-* position first, THEN Z down) is unchanged and already correct.
-:T:<N><G:00><G:91><G:28> Z0<EOL>
-:T:<N><G:90><G:work_coord><G:21><EOL>
+*
+* FIXED (real hardware failure, error:24): G00 and G28 must NEVER share
+* a block. Both are treated by grblHAL as commands that claim the axis
+* word, so "G00 G91 G28 Z0" is rejected outright as ambiguous - this
+* isn't a style choice, it halts the job. This was previously assumed
+* safe because the near-identical line at program end never actually
+* exercised the bug: G00 was already the active modal state from the
+* preceding rapid retract, so the engine silently suppressed re-printing
+* it and the conflict never manifested there. At program START there is
+* no preceding motion, so G00 always prints and always collides with
+* G28 - 100% reproducible, not intermittent, which is what caught it.
+*
+* G00 still needs to be established for the first bare X/Y rapid of
+* operation 1 (no G-word on that line - see FIRST_RAPID... and the
+* per-operation X/Y approach), so it's moved onto the FOLLOWING line
+* instead, alongside G90/work-offset/G21 - none of which claim an axis
+* word, so there's no ambiguity to trigger error:24 there.
+:T:<N><G:91><G:28> Z0<EOL>
+:T:<N><G:00><G:90><G:work_coord><G:21><EOL>
 *
 :SECTION=INIT_TOOL_CHANGE_MILL
 :T:<N><T><M:06><EOL>
@@ -294,8 +308,14 @@
 :T:<N><G!:work_coord><EOL>
 *
 :SECTION=SUB_TOOL_CHANGE_MILL
-:T:<N><G:00><G:91><G:28> Z0<EOL>
-:T:<N><T><M:06><EOL>
+* Same error:24 fix as START_OF_TAPE_MOTION above: G00 split off the
+* G91 G28 retract line and re-established on the tool-select line below
+* instead (T/M06 don't claim axis words, so no conflict). This path
+* wasn't exercised by the hardware failure that caught the program-start
+* case (single-tool test job), but it's the identical pattern and would
+* fail the same way on any job with an actual tool change mid-program.
+:T:<N><G:91><G:28> Z0<EOL>
+:T:<N><G:00><T><M:06><EOL>
 :T:<N><S!><M!:SPINDLE_DIR><EOL>
 :T:<N><G!:work_coord><EOL>
 *
@@ -615,7 +635,15 @@
 :T:<N> C0<EOL>
 *
 :SECTION=END_OF_TAPE
-:T:<N><G:00><G:91><G:28> Z0<EOL>
+* Same error:24 fix as START_OF_TAPE_MOTION/SUB_TOOL_CHANGE_MILL: G00
+* removed from the G91 G28 retract line. Unlike those two, nothing here
+* needs G00 re-established afterward (M30 ends the program immediately
+* after), so it's just dropped rather than relocated. This exact line
+* previously "worked" only by accident: G00 was already the active
+* modal state from the preceding rapid retract, so it got silently
+* suppressed and never actually printed - the ambiguous form was always
+* there, it just never triggered. Don't rely on that again.
+:T:<N><G:91><G:28> Z0<EOL>
 :T:<N><G:28> X0 Y0<EOL>
 :T:<N><M:30><EOL>
 

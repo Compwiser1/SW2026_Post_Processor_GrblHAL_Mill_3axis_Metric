@@ -58,6 +58,22 @@ compiled output or hardware. Do not reintroduce them.
   separate plain-named section and `CALL()` it.
 - **`:LIBRARY=` inside the `.SRC` must match the `.LIB` filename exactly.**
   Update it on every rename.
+- **Never combine `G00` with `G28` on the same block.** grblHAL treats
+  both as claiming the axis word, so `G00 G91 G28 Z0` is rejected
+  outright with `error:24` — this is not a style issue, it halts the
+  job. Found via a real hardware failure at v1.0.5: it had been latent
+  since the original program-start Z-move safety fix, undetected because
+  the program-end occurrence never actually triggered it (`G00` was
+  already the active modal state there, so it got silently suppressed
+  from output). Program-start has no preceding motion, so it always
+  printed and always failed — 100% reproducible. If a retract-to-home
+  needs `G00` established for a later "bare" (no G-word) rapid move,
+  put `G00` on the immediately following state-only line instead
+  (`G90`/work-offset/`G21`, tool-select/`M06`, etc. — none of those
+  claim an axis word, so no conflict). If nothing downstream needs `G00`
+  re-established, just drop it — don't rely on incidental modal-state
+  ordering to avoid the conflict, since that's exactly what made this
+  bug look safe until it wasn't.
 - **Arc output is `:ARCS=RADIAL`, not `:ARCS=CENTER`.** GrblHAL doesn't
   support G41/G42, and software-computed cutter compensation under
   `:ARCS=CENTER` produces radius mismatches that trip grblHAL's arc

@@ -1,38 +1,35 @@
-## v1.0.4
+## v1.0.5
 
-Fourth pipeline verification test — confirming the zip naming convention
-change (SW26_GrblHAL_Mill_3axis_Metric vX.Y.Z per delivery) alongside the
-now-default combined bump-release.sh + attach-ctl.sh instruction flow.
+**Real hardware bug fix**: `error:24` ("More than one g-code command
+that requires axis words found in block") at the very first line of
+every job, found on a real test run (`New Post - Test 2 - Spiral In &
+Pocket Out`, controller log timestamp 2026-07-13T09:50:30Z).
 
-## v1.0.3
+Root cause: `G00` and `G28` were combined on the same line
+(`G00 G91 G28 Z0`) in three places — program start
+(`START_OF_TAPE_MOTION`), every mid-program tool change
+(`SUB_TOOL_CHANGE_MILL`), and program end (`END_OF_TAPE`). grblHAL
+rejects this outright — both G-codes are treated as claiming the axis
+word, so combining them is ambiguous and halts the job.
 
-Third pipeline verification test — confirming the streamlined
-single-instruction Claude Code CLI flow (bump-release.sh followed by
-attach-ctl.sh in one pass) works correctly end-to-end.
+This had been latent since the program-start Z-move safety fix, and
+went unnoticed because the program-end occurrence never actually
+triggered it: `G00` was already the active modal motion state from the
+preceding rapid retract, so it was silently suppressed from the output
+and the conflict never manifested there. At program start there's no
+preceding motion, so `G00` always printed and always collided with
+`G28` — 100% reproducible, which is what caught it. The tool-change
+occurrence has the identical bug and would fail the same way on any job
+with more than one tool; this test job only used one tool, so that path
+wasn't exercised, but it's fixed too.
 
-## v1.0.2
+Fix: `G00` removed from all three `G91 G28 Z0` retract lines.
+Program-start and tool-change re-establish `G00` on the immediately
+following state-only line instead (`G90`/work-offset/`G21`, and
+tool-select/`M06`, respectively — neither claims an axis word, so no
+conflict), preserving the modal state that later "bare" X/Y rapids
+depend on. Program-end simply drops `G00` with no replacement, since
+nothing follows it but `M30`.
 
-Second pipeline verification test — confirming Claude Code CLI can execute
-the full bump/build/publish sequence itself (empty draft, [EXPERIMENTAL]
-title, single combined zip, current-version-only notes) without manual
-step-by-step commands.
-
-## v1.0.1
-
-Testing the release pipeline end-to-end.
-
-## v1.0.0
-
-First release under the new repo structure and versioning scheme:
-
-- **Versioning switched from date-letter (`YYYY.MM.DD-<letter>`) to plain
-  semver.** The old scheme was never intended to survive a move to
-  automated releases; `1.0.0` is a clean starting point, not a translation
-  of prior version history. `post.json` and the `.SRC` file's
-  `; Post Version:` stamp are now kept in lockstep by
-  `.scripts/bump-release.sh` on every future release.
-- **Filenames stabilized.** `.SRC`/`.LIB`/`.lng` no longer embed a date in
-  the filename, matching the GitHub repo convention.
-- **Release process is now automated via GitHub Actions.**
-
-No functional G-code output changes carried forward from `2026.07.12-D`.
+No other G-code output logic changed. Arc handling, tool table, machine
+time, and every other established fix carry forward unchanged.
