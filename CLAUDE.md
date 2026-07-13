@@ -112,6 +112,29 @@ compiled output or hardware. Do not reintroduce them.
   topmost `## vX.X.X` section of `latest_release.md` — never the full
   running changelog history. If asked to review release notes, keep this
   scoping in mind.
+- **Release notes are Claude's responsibility to write, not the
+  maintainer's.** `.scripts/bump-release.sh` no longer opens an editor —
+  it validates that `latest_release.md`'s top section already exactly
+  matches `## v<the target version>` with real, non-empty content, and
+  refuses to proceed otherwise.
+- **Standard delivery pattern for a source change**: pre-stamp
+  `post.json`'s `version` and the `.SRC` file's `; Post Version:` stamp
+  to the exact target version yourself (don't leave them at the old
+  version for the script to bump), prepend the matching `## vX.Y.Z`
+  section to `latest_release.md` with real notes, and include whichever
+  of `.SRC`/`.LIB`/`.lng` actually changed. Tell the maintainer the
+  explicit version to run (`.scripts/bump-release.sh X.Y.Z`) — using the
+  explicit form, not `patch`/`minor`/`major`, avoids any ambiguity about
+  what "current version" means once the delivered files already show the
+  target version.
+- **`bump-release.sh` stages the entire working tree (`git add -A`)**,
+  not just specific filenames — this was a real bug fixed after testing:
+  the original version only staged `post.json`/`latest_release.md`/the
+  `.SRC` file by name, silently dropping any `.LIB` or `.lng` change from
+  the release commit. Any file you deliver that the maintainer places in
+  the repo will be picked up, so there's no need to separately instruct
+  them to `git add` specific files before running the script — just
+  "place these files, then run `.scripts/bump-release.sh X.Y.Z`."
 - If asked to review or update `FrankenOKO_Post_Notes.md` or
   `latest_release.md`, preserve the existing convention: `latest_release.md`
   is a per-release changelog (newest section on top, becomes the GitHub
