@@ -1,6 +1,6 @@
 ## v1.0.1
 
-- 
+- Testing the release pipeline end-to-end.
 
 ## v1.0.0
 
