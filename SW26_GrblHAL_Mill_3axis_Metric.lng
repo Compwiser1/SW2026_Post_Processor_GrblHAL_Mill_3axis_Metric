@@ -1,0 +1,79 @@
+DRILLING                                                              :0001:
+SPOT_DRILLING                                                         :0002:
+PECKING                                                               :0003:
+TAPPING                                                               :0004:
+BORING                                                                :0005:
+HIGH_SPEED_PECKING                                                    :0006:
+VARIABLE_PECKING                                                      :0007:
+REVERSE_TAPPING                                                       :0008:
+REAMING                                                               :0009:
+REAMING_DWELL                                                         :0010:
+BORE_DWELL                                                            :0011:
+BACK_BORING                                                           :0012:
+FINE_BORING                                                           :0013:
+MILL_LACE                                                             :0014:
+MILL_POCKET                                                           :0015:
+MILL_PROFILING                                                        :0016:
+MILL_MISC                                                             :0017:
+MILL_UV_CUT                                                           :0018:
+MILL_SLICE_CUT                                                        :0019:
+MILL_ROUGH_CUT                                                        :0020:
+MILL_CURVE_CUT                                                        :0021:
+MILL_TOPO_CUT                                                         :0022:
+MILL_FREEFORM_CUT                                                     :0023:
+MILL_PENCIL_CUT                                                       :0024:
+Post Program Stop                                                     :0025:
+Machine Name                                                          :0026:
+                                                                      :0027:
+Controller Type                                                       :0028:
+                                                                      :0029:
+Z Home                                                                :0030:
+                                                                      :0031:
+Traverse Rate                                                         :0032:
+                                                                      :0033:
+Part Thickness                                                        :0034:
+ENTER Part Thickness                                                  :0035:
+Coolant                                                               :0036:
+SELECT Coolant                                                        :0037:
+Off                                                                   :0038:
+Flood                                                                 :0039:
+Mist                                                                  :0040:
+Through Hole                                                          :0041:
+Absolute Incremental                                                  :0042:
+SELECT Absolute Incremental                                           :0043:
+Absolute                                                              :0044:
+Incremental                                                           :0045:
+Work Coordinate 54 - 59                                               :0046:
+ENTER Work Coordinate 54 - 59                                         :0047:
+Program/Optional Stop                                                 :0048:
+SELECT Program/Optional Stop                                          :0049:
+Program Stop                                                          :0050:
+Optional Stop                                                         :0051:
+Program number                                                        :0052:
+ENTER Program number                                                  :0053:
+Dwell                                                                 :0054:
+ENTER Dwell                                                           :0055:
+Shift Amount                                                          :0056:
+ENTER Shift Amount                                                    :0057:
+5axis Arc Deviation                                                   :0058:
+ENTER 5axis Arc Deviation                                             :0059:
+Sub Work Coordinate 1 - 1                                             :0060:
+ENTER Sub Work Coordinate 1 - 100                                     :0061:
+Fixture Offset                                                        :0062:
+ENTER Fixture Offset                                                  :0063:
+Compensation                                                          :0064:
+SELECT Compensation                                                   :0065:
+On                                                                    :0066:
+Off                                                                   :0067:
+Left                                                                  :0068:
+Right                                                                 :0069:
+Tool Holder Length                                                    :0070:
+ENTER Tool Holder Length                                              :0071:
+Sign Angle A                                                          :0072:
+SELECT Sign Angle A                                                   :0073:
+A+                                                                    :0074:
+A-                                                                    :0075:
+Rigid Tap On or Off                                                   :0076:
+SELECT Rigid Tap On or Off                                            :0077:
+On                                                                    :0078:
+Off                                                                   :0079:
