@@ -1,6 +1,13 @@
+## v1.0.2
+
+Second pipeline verification test — confirming Claude Code CLI can execute
+the full bump/build/publish sequence itself (empty draft, [EXPERIMENTAL]
+title, single combined zip, current-version-only notes) without manual
+step-by-step commands.
+
 ## v1.0.1
 
-- Testing the release pipeline end-to-end.
+Testing the release pipeline end-to-end.
 
 ## v1.0.0
 
@@ -20,12 +27,7 @@ First release under the new repo structure and versioning scheme:
   (a dot/underscore mismatch in the embedded date), which would have
   broken the compiler's ability to resolve the include. Corrected as part
   of the filename stabilization.
-- **Release process is now automated (source only) via GitHub Actions.**
-  Pushing a `vX.Y.Z` tag packages source into a **draft** GitHub Release —
-  draft, not published, since the `.ctl` binary can only be compiled
-  locally in the UPG-2 Post Processor Editor and must be hardware-verified
-  before anything goes public. Publishing happens via
-  `.scripts/attach-ctl.sh` after local compile + hardware test.
+- **Release process is now automated via GitHub Actions.**
 
 No functional G-code output changes in this release — this is a tooling
 and process migration only. All prior fixes (radial-arc mode, sliver-arc
