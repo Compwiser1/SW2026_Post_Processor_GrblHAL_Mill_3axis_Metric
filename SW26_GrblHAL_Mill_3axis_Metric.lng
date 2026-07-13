@@ -1,116 +1,79 @@
-# Setup checklist — SW2026 Post Processor repo
-
-One-time setup to wire up the same release automation as your
-`ncSender-Plugin-SW2026_G-Code_Tools` repo, adapted for the compile-locally
-constraint. All files referenced here are in the accompanying zip, laid out
-ready to unzip directly into your repo root.
-
-## 1. Upload everything
-
-Unzip into `SW2026_Post_Processor_GrblHAL_Mill_3axis_Metric`, preserving
-the folder structure:
-
-```
-SW26_GrblHAL_Mill_3axis_Metric.SRC       <- v1.0.0, migrated + ready to compile
-SW26_GrblHAL_Mill_3axis_Metric.LIB       <- renamed, unchanged content
-SW26_GrblHAL_Mill_3axis_Metric.lng       <- renamed, unchanged content
-FrankenOKO_Post_Notes.md                 <- carried-forward dev history
-post.json                                <- version source of truth (1.0.0)
-latest_release.md                        <- seeded v1.0.0 changelog entry
-CLAUDE.md                                <- standing instructions for Claude Code
-.github/workflows/release-build.yml
-.scripts/bump-release.sh
-.scripts/attach-ctl.sh
-```
-
-If you already have older dated files (`..._2026_07_12-D.SRC` etc.) sitting
-in the repo, delete them — the stable, undated filenames above replace them
-going forward. `:LIBRARY=` inside the `.SRC` now points at
-`SW26_GrblHAL_Mill_3axis_Metric.LIB` (no date), so the `.LIB` file must sit
-in the same folder with that exact name.
-
-From a local clone:
-
-```bash
-chmod +x .scripts/bump-release.sh .scripts/attach-ctl.sh
-git add .
-git commit -m "chore: migrate to stable filenames, semver v1.0.0, add draft-release CI"
-git push
-```
-
-## 2. What already happened to the version stamp — nothing left to do here
-
-The `.SRC` file's compile-tripwire stamp is a plain, free-form comment
-line (not a fixed-width field — that was an earlier, now-outdated
-assumption on my part, corrected once I saw your actual current file):
-
-```
-:T:; Post Version: 1.0.0<EOL>
-```
-
-This is already set correctly in the uploaded `.SRC` file, along with the
-`:LIBRARY=` self-reference fix. `post.json` is already set to `1.0.0` to
-match. You don't need to hand-edit anything — from here forward, every
-version bump goes through `.scripts/bump-release.sh`.
-
-## 3. Claude GitHub App — probably already done
-
-Since it's already installed for `ncSender-Plugin-SW2026_G-Code_Tools`, you
-likely just need to **grant it access to this repo too**:
-- Go to https://github.com/settings/installations
-- Find the Claude app, click Configure
-- Add `SW2026_Post_Processor_GrblHAL_Mill_3axis_Metric` to its repository
-  access list
-
-If it's not installed at all yet: https://github.com/apps/claude → install
-→ select this repo.
-
-## 4. Add the API key secret to this repo
-
-Secrets are per-repository, so this needs to be added even though the old
-repo already has one:
-- Repo → Settings → Secrets and variables → Actions → New repository secret
-- Name: `ANTHROPIC_API_KEY` (or `CLAUDE_CODE_OAUTH_TOKEN` if you're using
-  `claude setup-token` instead)
-
-## 5. Add the `@claude` mention workflow (optional, separate from releases)
-
-`release-build.yml` only handles releases. If you also want `@claude` to
-respond to issue/PR comments in this repo the same way it might elsewhere,
-run `/install-github-app` in Claude Code locally, or add the standard
-`examples/claude.yml`-style workflow from `anthropics/claude-code-action`.
-Not required for the release flow to work.
-
-## 6. Install the GitHub CLI locally, if you haven't
-
-`.scripts/attach-ctl.sh` needs `gh`:
-- https://cli.github.com/
-- Then: `gh auth login`
-
-## 7. Cut the actual v1.0.0 release
-
-Since the source files are already at `1.0.0`, your first release doesn't
-need a bump — just tag and push what you just uploaded:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Check the Actions tab — `release-build.yml` should run and create a
-**draft** release with a source zip attached (`SW26_GrblHAL_Mill_3axis_Metric-v1.0.0.zip`).
-
-Then, same as always: compile locally in the Post Processor Editor, verify
-the stamp reads `1.0.0`, test-post, hardware-test. Once you're satisfied:
-
-```bash
-.scripts/attach-ctl.sh v1.0.0 /path/to/compiled.ctl
-```
-
-That publishes the release with both the source zip and the `.ctl`
-attached. Every release after this one goes through
-`.scripts/bump-release.sh` instead of a manual tag.
-
-That closes the loop: chat produces source + notes → you push → CI stages a
-draft → you compile and verify locally exactly as you always have → one
-script turns verified work into a public release.
+DRILLING                                                              :0001:
+SPOT_DRILLING                                                         :0002:
+PECKING                                                               :0003:
+TAPPING                                                               :0004:
+BORING                                                                :0005:
+HIGH_SPEED_PECKING                                                    :0006:
+VARIABLE_PECKING                                                      :0007:
+REVERSE_TAPPING                                                       :0008:
+REAMING                                                               :0009:
+REAMING_DWELL                                                         :0010:
+BORE_DWELL                                                            :0011:
+BACK_BORING                                                           :0012:
+FINE_BORING                                                           :0013:
+MILL_LACE                                                             :0014:
+MILL_POCKET                                                           :0015:
+MILL_PROFILING                                                        :0016:
+MILL_MISC                                                             :0017:
+MILL_UV_CUT                                                           :0018:
+MILL_SLICE_CUT                                                        :0019:
+MILL_ROUGH_CUT                                                        :0020:
+MILL_CURVE_CUT                                                        :0021:
+MILL_TOPO_CUT                                                         :0022:
+MILL_FREEFORM_CUT                                                     :0023:
+MILL_PENCIL_CUT                                                       :0024:
+Post Program Stop                                                     :0025:
+Machine Name                                                          :0026:
+                                                                      :0027:
+Controller Type                                                       :0028:
+                                                                      :0029:
+Z Home                                                                :0030:
+                                                                      :0031:
+Traverse Rate                                                         :0032:
+                                                                      :0033:
+Part Thickness                                                        :0034:
+ENTER Part Thickness                                                  :0035:
+Coolant                                                               :0036:
+SELECT Coolant                                                        :0037:
+Off                                                                   :0038:
+Flood                                                                 :0039:
+Mist                                                                  :0040:
+Through Hole                                                          :0041:
+Absolute Incremental                                                  :0042:
+SELECT Absolute Incremental                                           :0043:
+Absolute                                                              :0044:
+Incremental                                                           :0045:
+Work Coordinate 54 - 59                                               :0046:
+ENTER Work Coordinate 54 - 59                                         :0047:
+Program/Optional Stop                                                 :0048:
+SELECT Program/Optional Stop                                          :0049:
+Program Stop                                                          :0050:
+Optional Stop                                                         :0051:
+Program number                                                        :0052:
+ENTER Program number                                                  :0053:
+Dwell                                                                 :0054:
+ENTER Dwell                                                           :0055:
+Shift Amount                                                          :0056:
+ENTER Shift Amount                                                    :0057:
+5axis Arc Deviation                                                   :0058:
+ENTER 5axis Arc Deviation                                             :0059:
+Sub Work Coordinate 1 - 1                                             :0060:
+ENTER Sub Work Coordinate 1 - 100                                     :0061:
+Fixture Offset                                                        :0062:
+ENTER Fixture Offset                                                  :0063:
+Compensation                                                          :0064:
+SELECT Compensation                                                   :0065:
+On                                                                    :0066:
+Off                                                                   :0067:
+Left                                                                  :0068:
+Right                                                                 :0069:
+Tool Holder Length                                                    :0070:
+ENTER Tool Holder Length                                              :0071:
+Sign Angle A                                                          :0072:
+SELECT Sign Angle A                                                   :0073:
+A+                                                                    :0074:
+A-                                                                    :0075:
+Rigid Tap On or Off                                                   :0076:
+SELECT Rigid Tap On or Off                                            :0077:
+On                                                                    :0078:
+Off                                                                   :0079:

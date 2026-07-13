@@ -1,137 +1,67 @@
-name: Build and Draft Release (Source Only)
-
-# Triggers on any tag push matching v*.*.* (e.g. v1.0.0). Typical flow is:
-#   1. Bump post.json "version" and the .SRC file's "Post Version:" stamp
-#      together (see .scripts/bump-release.sh)
-#   2. Commit as: chore: create new release vX.X.X
-#   3. Tag the commit: git tag vX.X.X
-#   4. Push both: git push && git push --tags
-# The push of the tag is what triggers this workflow.
+#!/usr/bin/env bash
 #
-# Versioning is plain semver (X.Y.Z), matching the ncSender plugin repo's
-# scheme — post.json is the source of truth, and the .SRC file's plain,
-# free-form "; Post Version: X.Y.Z" comment line is kept in sync with it by
-# .scripts/bump-release.sh.
+# .scripts/attach-ctl.sh
 #
-# IMPORTANT: The .ctl binary CANNOT be built here. The UPG-2 Post Processor
-# Editor is a local, GUI-only, Windows-side compiler with no CLI/API — it
-# does not exist in this runner's environment. This workflow packages
-# SOURCE ONLY and creates the release as a DRAFT. The release stays a draft,
-# unpublished and not publicly visible, until you have:
-#   1. Compiled the .ctl locally in the Post Processor Editor
-#   2. Confirmed the version stamp posts correctly (the compile tripwire)
-#   3. Posted a test job and reviewed the NC output
-#   4. Run it on FrankenOKO and confirmed no gouging / correct behavior
-#   5. Run .scripts/attach-ctl.sh to attach the .ctl and publish the release
+# Run this AFTER, and only after:
+#   1. Recompiling in the Post Processor Editor
+#   2. Confirming the version stamp posts correctly (the compile tripwire)
+#   3. Posting a test job and reviewing the NC output
+#   4. Running it on FrankenOKO and confirming correct, safe behavior
 #
-# Never bypass the draft gate. A published release with no attached .ctl,
-# or one attached from an untested compile, is a released hazard, not a
-# convenience.
-on:
-  push:
-    tags:
-      - 'v*.*.*'
+# This is the one manual gate in the whole release flow, and it's the only
+# point that actually catches a hardware-breaking bug — do not skip steps
+# or attach a .ctl that hasn't been through all four.
+#
+# What it does:
+#   1. Uploads the given .ctl file as an asset on the existing draft release
+#   2. Publishes the release (removes draft status), making it public
+#
+# Usage:
+#   .scripts/attach-ctl.sh v2026.07.13-A /path/to/SW26_GrblHAL_Mill_3axis_Metric.ctl
+#
+# Requires: GitHub CLI (gh), authenticated (gh auth login) with write access
+# to this repo.
 
-permissions:
-  contents: write
+set -euo pipefail
 
-jobs:
-  build-and-draft-release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+if [ $# -ne 2 ]; then
+  echo "Usage: $0 <tag> <path-to-ctl-file>" >&2
+  echo "Example: $0 v2026.07.13-A /path/to/SW26_GrblHAL_Mill_3axis_Metric.ctl" >&2
+  exit 1
+fi
 
-      - name: Read post id and version from post.json
-        id: post
-        run: |
-          POST_ID=$(jq -r '.id' post.json)
-          MANIFEST_VERSION=$(jq -r '.version' post.json)
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
+TAG="$1"
+CTL_PATH="$2"
 
-          echo "Post ID: $POST_ID"
-          echo "post.json version: $MANIFEST_VERSION"
-          echo "Tag version: $TAG_VERSION"
+if ! command -v gh >/dev/null 2>&1; then
+  echo "Error: GitHub CLI (gh) is required (https://cli.github.com/)." >&2
+  exit 1
+fi
 
-          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match post.json version ${MANIFEST_VERSION}. Update post.json before tagging."
-            exit 1
-          fi
+if [ ! -f "$CTL_PATH" ]; then
+  echo "Error: file not found: $CTL_PATH" >&2
+  exit 1
+fi
 
-          echo "post_id=$POST_ID" >> "$GITHUB_OUTPUT"
-          echo "version=$MANIFEST_VERSION" >> "$GITHUB_OUTPUT"
+if [[ "$CTL_PATH" != *.ctl ]]; then
+  echo "Warning: '$CTL_PATH' doesn't end in .ctl — double-check this is the right file." >&2
+  read -r -p "Continue anyway? [y/N] " CONFIRM
+  [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ] || { echo "Aborted."; exit 0; }
+fi
 
-      - name: Verify .SRC version stamp matches post.json
-        run: |
-          VERSION="${{ steps.post.outputs.version }}"
-          SRC_FILE=$(find . -maxdepth 1 -name '*.SRC' | head -n1)
+echo "Release: $TAG"
+echo "Attaching: $CTL_PATH"
+echo ""
+echo "By running this you are confirming the .ctl has been recompiled,"
+echo "stamp-verified, test-posted, and hardware-tested on FrankenOKO."
+read -r -p "Confirm and publish? [y/N] " CONFIRM
+if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+  echo "Aborted. Nothing was uploaded or published."
+  exit 0
+fi
 
-          if [ -z "$SRC_FILE" ]; then
-            echo "::error::No .SRC file found at repo root."
-            exit 1
-          fi
+gh release upload "$TAG" "$CTL_PATH" --clobber
+gh release edit "$TAG" --draft=false
 
-          if ! grep -q "; Post Version: ${VERSION}" "$SRC_FILE"; then
-            echo "::error::${SRC_FILE} does not contain the stamp '; Post Version: ${VERSION}'. The .SRC stamp and post.json have drifted apart — fix before tagging (run .scripts/bump-release.sh, don't hand-edit the stamp). This check exists because the compile tripwire only works if the two agree."
-            exit 1
-          fi
-
-          echo "Stamp verified: Post Version: ${VERSION} found in ${SRC_FILE}"
-
-      - name: Stage source files
-        run: |
-          POST_ID="${{ steps.post.outputs.post_id }}"
-          mkdir -p "tmp/$POST_ID"
-          rsync -a \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude '.scripts' \
-            --exclude 'dist' \
-            --exclude 'tmp' \
-            --exclude '.gitignore' \
-            --exclude 'latest_release.md' \
-            --exclude '*.ctl' \
-            ./ "tmp/$POST_ID/"
-
-      - name: Build source release zip
-        id: zip
-        run: |
-          POST_ID="${{ steps.post.outputs.post_id }}"
-          VERSION="${{ steps.post.outputs.version }}"
-          mkdir -p dist
-          ZIP_NAME="${POST_ID}-v${VERSION}.zip"
-          (cd tmp && zip -r "../dist/${ZIP_NAME}" "${POST_ID}")
-          echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
-          echo "zip_path=dist/${ZIP_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Get release notes
-        id: notes
-        run: |
-          if [ -f latest_release.md ]; then
-            # latest_release.md is a cumulative changelog (newest section on
-            # top). Publish ONLY the topmost "## vX.X.X" section as this
-            # release's notes, not the whole history.
-            SECTION=$(awk '/^## /{if (seen) exit; seen=1} seen' latest_release.md)
-            {
-              echo 'body<<RELEASE_NOTES_EOF'
-              echo "$SECTION"
-              echo ""
-              echo "---"
-              echo "**⚠️ SOURCE ONLY — awaiting compiled .ctl.**"
-              echo "This release is a draft and will remain unpublished until the .ctl has been compiled locally, hardware-tested, and attached via .scripts/attach-ctl.sh."
-              echo 'RELEASE_NOTES_EOF'
-            } >> "$GITHUB_OUTPUT"
-          else
-            echo "body=Release ${{ steps.post.outputs.version }} — SOURCE ONLY, awaiting compiled .ctl." >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Create draft GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ steps.post.outputs.post_id }} v${{ steps.post.outputs.version }} (source only — awaiting .ctl)
-          body: ${{ steps.notes.outputs.body }}
-          draft: true
-          files: |
-            ${{ steps.zip.outputs.zip_path }}
-          fail_on_unmatched_files: true
+echo ""
+echo "Published: $TAG is now live on GitHub Releases with the compiled .ctl attached."

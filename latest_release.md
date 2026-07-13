@@ -1,67 +1,30 @@
-#!/usr/bin/env bash
-#
-# .scripts/attach-ctl.sh
-#
-# Run this AFTER, and only after:
-#   1. Recompiling in the Post Processor Editor
-#   2. Confirming the version stamp posts correctly (the compile tripwire)
-#   3. Posting a test job and reviewing the NC output
-#   4. Running it on FrankenOKO and confirming correct, safe behavior
-#
-# This is the one manual gate in the whole release flow, and it's the only
-# point that actually catches a hardware-breaking bug — do not skip steps
-# or attach a .ctl that hasn't been through all four.
-#
-# What it does:
-#   1. Uploads the given .ctl file as an asset on the existing draft release
-#   2. Publishes the release (removes draft status), making it public
-#
-# Usage:
-#   .scripts/attach-ctl.sh v2026.07.13-A /path/to/SW26_GrblHAL_Mill_3axis_Metric.ctl
-#
-# Requires: GitHub CLI (gh), authenticated (gh auth login) with write access
-# to this repo.
+## v1.0.0
 
-set -euo pipefail
+First release under the new repo structure and versioning scheme:
 
-if [ $# -ne 2 ]; then
-  echo "Usage: $0 <tag> <path-to-ctl-file>" >&2
-  echo "Example: $0 v2026.07.13-A /path/to/SW26_GrblHAL_Mill_3axis_Metric.ctl" >&2
-  exit 1
-fi
+- **Versioning switched from date-letter (`YYYY.MM.DD-<letter>`) to plain
+  semver.** The old scheme was never intended to survive a move to
+  automated releases; `1.0.0` is a clean starting point, not a translation
+  of prior version history. `post.json` and the `.SRC` file's
+  `; Post Version:` stamp are now kept in lockstep by
+  `.scripts/bump-release.sh` on every future release.
+- **Filenames stabilized.** `.SRC`/`.LIB`/`.lng` no longer embed a date in
+  the filename (`SW26_GrblHAL_Mill_3axis_Metric.SRC`, not
+  `..._2026_07_12-D.SRC`), matching the GitHub repo convention.
+- **Fixed a real bug found during this migration**: the `.SRC` file's
+  `:LIBRARY=` self-reference had drifted from the actual `.LIB` filename
+  (a dot/underscore mismatch in the embedded date), which would have
+  broken the compiler's ability to resolve the include. Corrected as part
+  of the filename stabilization.
+- **Release process is now automated (source only) via GitHub Actions.**
+  Pushing a `vX.Y.Z` tag packages source into a **draft** GitHub Release —
+  draft, not published, since the `.ctl` binary can only be compiled
+  locally in the UPG-2 Post Processor Editor and must be hardware-verified
+  before anything goes public. Publishing happens via
+  `.scripts/attach-ctl.sh` after local compile + hardware test.
 
-TAG="$1"
-CTL_PATH="$2"
-
-if ! command -v gh >/dev/null 2>&1; then
-  echo "Error: GitHub CLI (gh) is required (https://cli.github.com/)." >&2
-  exit 1
-fi
-
-if [ ! -f "$CTL_PATH" ]; then
-  echo "Error: file not found: $CTL_PATH" >&2
-  exit 1
-fi
-
-if [[ "$CTL_PATH" != *.ctl ]]; then
-  echo "Warning: '$CTL_PATH' doesn't end in .ctl — double-check this is the right file." >&2
-  read -r -p "Continue anyway? [y/N] " CONFIRM
-  [ "$CONFIRM" = "y" ] || [ "$CONFIRM" = "Y" ] || { echo "Aborted."; exit 0; }
-fi
-
-echo "Release: $TAG"
-echo "Attaching: $CTL_PATH"
-echo ""
-echo "By running this you are confirming the .ctl has been recompiled,"
-echo "stamp-verified, test-posted, and hardware-tested on FrankenOKO."
-read -r -p "Confirm and publish? [y/N] " CONFIRM
-if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
-  echo "Aborted. Nothing was uploaded or published."
-  exit 0
-fi
-
-gh release upload "$TAG" "$CTL_PATH" --clobber
-gh release edit "$TAG" --draft=false
-
-echo ""
-echo "Published: $TAG is now live on GitHub Releases with the compiled .ctl attached."
+No functional G-code output changes in this release — this is a tooling
+and process migration only. All prior fixes (radial-arc mode, sliver-arc
+gouge-risk fix, machine-time accuracy fix, program-start Z-move safety fix)
+carry forward unchanged from the source this was migrated from
+(`2026.07.12-D`).
