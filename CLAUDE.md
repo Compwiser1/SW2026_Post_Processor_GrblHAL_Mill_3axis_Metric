@@ -90,8 +90,15 @@ compiled output or hardware. Do not reintroduce them.
   bump both together, but do NOT push a tag yourself — tagging, version-
   bumping, and stamp updates are all done locally via
   `.scripts/bump-release.sh`, by the maintainer.
-- `.github/workflows/release-build.yml` triggers on tag push, packages
-  **source only**, and creates the GitHub Release as a **draft**. Never
+- `.github/workflows/release-build.yml` triggers on tag push, builds a
+  **Source zip** (`<post_id>-Source-v<version>.zip`, containing only
+  `.SRC`/`.LIB`/`.lng`/`LICENSE` — nothing else), and creates the GitHub
+  Release as a **draft**. `.scripts/attach-ctl.sh` later adds a
+  **Compiled zip** (`<post_id>-Compiled-v<version>.zip`, containing only
+  the `.ctl`) and publishes. A finished release has exactly those two
+  custom assets, plus GitHub's own auto-generated "Source code
+  (zip)"/"(tar.gz)" links — that pair is a GitHub platform feature on
+  every tag, not something this workflow creates or can suppress. Never
   attempt to make a release non-draft, edit release publish status, or
   attach a `.ctl` file — that is exclusively done locally via
   `.scripts/attach-ctl.sh` after real hardware verification.

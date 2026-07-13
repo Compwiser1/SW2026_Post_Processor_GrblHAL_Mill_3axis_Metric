@@ -121,28 +121,24 @@ jobs:
 
           echo "All checked files contain their expected content signatures."
 
-      - name: Stage source files
-        run: |
-          POST_ID="${{ steps.post.outputs.post_id }}"
-          mkdir -p "tmp/$POST_ID"
-          rsync -a \
-            --exclude '.git' \
-            --exclude '.github' \
-            --exclude '.scripts' \
-            --exclude 'dist' \
-            --exclude 'tmp' \
-            --exclude '.gitignore' \
-            --exclude 'latest_release.md' \
-            --exclude '*.ctl' \
-            ./ "tmp/$POST_ID/"
-
-      - name: Build source release zip
+      - name: Build source release zip (SRC/LIB/lng/LICENSE only)
         id: zip
         run: |
           POST_ID="${{ steps.post.outputs.post_id }}"
           VERSION="${{ steps.post.outputs.version }}"
-          mkdir -p dist
-          ZIP_NAME="${POST_ID}-v${VERSION}.zip"
+          SRC_FILE=$(find . -maxdepth 1 -name '*.SRC' | head -n1)
+          LIB_FILE=$(find . -maxdepth 1 -name '*.LIB' | head -n1)
+          LNG_FILE=$(find . -maxdepth 1 -name '*.lng' | head -n1)
+
+          if [ ! -f LICENSE ]; then
+            echo "::error::LICENSE file not found at repo root."
+            exit 1
+          fi
+
+          mkdir -p "tmp/$POST_ID" dist
+          cp "$SRC_FILE" "$LIB_FILE" "$LNG_FILE" LICENSE "tmp/$POST_ID/"
+
+          ZIP_NAME="${POST_ID}-Source-v${VERSION}.zip"
           (cd tmp && zip -r "../dist/${ZIP_NAME}" "${POST_ID}")
           echo "zip_name=$ZIP_NAME" >> "$GITHUB_OUTPUT"
           echo "zip_path=dist/${ZIP_NAME}" >> "$GITHUB_OUTPUT"
@@ -160,19 +156,18 @@ jobs:
               echo "$SECTION"
               echo ""
               echo "---"
-              echo "**⚠️ SOURCE ONLY — awaiting compiled .ctl.**"
-              echo "This release is a draft and will remain unpublished until the .ctl has been compiled locally, hardware-tested, and attached via .scripts/attach-ctl.sh."
+              echo "*This release is a draft until the compiled .ctl is attached via .scripts/attach-ctl.sh, after local compile + hardware verification.*"
               echo 'RELEASE_NOTES_EOF'
             } >> "$GITHUB_OUTPUT"
           else
-            echo "body=Release ${{ steps.post.outputs.version }} — SOURCE ONLY, awaiting compiled .ctl." >> "$GITHUB_OUTPUT"
+            echo "body=Release ${{ steps.post.outputs.version }}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Create draft GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ steps.post.outputs.post_id }} v${{ steps.post.outputs.version }} (source only — awaiting .ctl)
+          name: ${{ steps.post.outputs.post_id }} v${{ steps.post.outputs.version }}
           body: ${{ steps.notes.outputs.body }}
           draft: true
           files: |
