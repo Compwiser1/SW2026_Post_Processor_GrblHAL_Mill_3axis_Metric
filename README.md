@@ -73,7 +73,8 @@ posts from the `.ctl`, not from these source files.
   compiler limitation), only the document-level Custom tab.
 
 ## Known limitations
-
+- Per ncSender v2.0.62 the Visualizer now supports R-format arcs!
+  Thank you siganberg!
 - **ncSender's 3D preview does not render R-format arcs** — it draws
   straight chords between arc endpoints, so curves look like polygons on
   screen. Display-only: the sender streams motion verbatim and grblHAL
