@@ -78,6 +78,49 @@ jobs:
 
           echo "Stamp verified: Post Version: ${VERSION} found in ${SRC_FILE}"
 
+      - name: Sanity-check that each file's content actually matches its filename
+        run: |
+          # Added after a real incident: files were dragged/uploaded via a
+          # method that silently cross-mixed content between files (e.g.
+          # post.json ended up containing CLAUDE.md's text, SW26_*.LIB ended
+          # up containing post.json's text, etc.) — each file existed, had a
+          # plausible size, and wasn't empty, so nothing upstream of this
+          # caught it. This step checks a distinctive signature inside each
+          # file's actual content, not just that the file exists.
+          FAIL=0
+
+          check() {
+            local file="$1" pattern="$2" desc="$3"
+            if [ ! -f "$file" ]; then
+              echo "::error::Missing file: $file"
+              FAIL=1
+              return
+            fi
+            if ! head -20 "$file" | grep -qE "$pattern"; then
+              echo "::error::$file does not look like $desc (expected to find pattern '$pattern' in the first 20 lines). This file's content may have been swapped with another file's — check what's actually in it before re-tagging."
+              FAIL=1
+            fi
+          }
+
+          SRC_FILE=$(find . -maxdepth 1 -name '*.SRC' | head -n1)
+          LIB_FILE=$(find . -maxdepth 1 -name '*.LIB' | head -n1)
+          LNG_FILE=$(find . -maxdepth 1 -name '*.lng' | head -n1)
+
+          check "$SRC_FILE" '^\*FANUCM' "UPG-2 post source (should start with *FANUCM)"
+          check "$LIB_FILE" ':ATTRNAME=' "UPG-2 attribute library (should contain :ATTRNAME=)"
+          check "$LNG_FILE" ':[0-9]{4}:' "UPG-2 language file (should contain :NNNN: entries)"
+          check "post.json" '"id"[[:space:]]*:' "the version manifest (should contain an \"id\" field)"
+          check "CLAUDE.md" '^# CLAUDE\.md' "Claude Code instructions (should start with '# CLAUDE.md')"
+          check ".scripts/bump-release.sh" '^#!/usr/bin/env bash' "a shell script (should start with a bash shebang)"
+          check ".scripts/attach-ctl.sh" '^#!/usr/bin/env bash' "a shell script (should start with a bash shebang)"
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "::error::One or more files failed the content sanity check. Refusing to build a release from mismatched source. Fix the affected file(s) locally, re-commit, delete and re-push the tag."
+            exit 1
+          fi
+
+          echo "All checked files contain their expected content signatures."
+
       - name: Stage source files
         run: |
           POST_ID="${{ steps.post.outputs.post_id }}"
@@ -108,6 +151,9 @@ jobs:
         id: notes
         run: |
           if [ -f latest_release.md ]; then
+            # latest_release.md is a cumulative changelog (newest section on
+            # top). Publish ONLY the topmost "## vX.X.X" section as this
+            # release's notes, not the whole history.
             SECTION=$(awk '/^## /{if (seen) exit; seen=1} seen' latest_release.md)
             {
               echo 'body<<RELEASE_NOTES_EOF'

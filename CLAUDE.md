@@ -101,6 +101,52 @@ compiled output or hardware. Do not reintroduce them.
   Release body); `FrankenOKO_Post_Notes.md` is the carried-forward full
   development history for session continuity.
 
+## Getting file changes into this repo — proven method
+
+Real experience from this repo's setup: bulk uploads (zip extraction,
+dragging whole folders, GitHub's web "Add file" button) have repeatedly
+either dropped hidden dot-folders (`.github`, `.scripts`) entirely, or
+silently cross-mixed content between files (e.g. `post.json` ending up
+containing `CLAUDE.md`'s text). Both failure modes left every file
+*present* with a *plausible size* — nothing looked obviously wrong until
+manually inspected file-by-file.
+
+**What's actually reliable:**
+- **Single-file drag-and-drop** into the GitHub Codespace's VS Code
+  Explorer, one file at a time, confirming the "Replace" prompt. This
+  worked cleanly every time it was used.
+- **Terminal heredocs** (`cat > file << 'EOF' ... EOF`) typed or pasted
+  directly into the Codespace terminal, for smaller text files. Also
+  fully reliable.
+- **`release-build.yml`'s content sanity-check step** (added after this
+  incident) now catches cross-file content mixups automatically at build
+  time — if a future release build fails on that step, the error names
+  exactly which file doesn't match its expected content signature. Fix
+  that file specifically rather than re-uploading everything.
+
+**What's proven unreliable, avoid:**
+- Extracting a zip locally then dragging the whole folder into a
+  browser-based uploader — hidden dot-folders (`.github`, `.scripts`)
+  are easy to lose this way, especially since they're hidden by default
+  in macOS Finder and some Windows Explorer configurations.
+- Any bulk/batch file transfer where the mapping from source to
+  destination isn't independently verified per file afterward.
+
+**After any batch of file changes, before tagging a release**: run the
+labeled verification loop to confirm every file's content matches its
+filename, rather than trusting that files transferred correctly:
+
+```bash
+for f in SW26_GrblHAL_Mill_3axis_Metric.LIB SW26_GrblHAL_Mill_3axis_Metric.lng \
+         CLAUDE.md SETUP_INSTRUCTIONS.md latest_release.md FrankenOKO_Post_Notes.md \
+         .scripts/attach-ctl.sh .scripts/bump-release.sh \
+         .github/workflows/release-build.yml SW26_GrblHAL_Mill_3axis_Metric.SRC post.json; do
+  echo "=== $f ==="
+  head -2 "$f"
+  echo ""
+done
+```
+
 ## What to do when asked to make a source change
 
 1. Make the edit.
