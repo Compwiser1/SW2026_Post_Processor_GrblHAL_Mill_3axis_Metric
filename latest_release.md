@@ -1,3 +1,9 @@
+## v1.0.3
+
+Third pipeline verification test — confirming the streamlined
+single-instruction Claude Code CLI flow (bump-release.sh followed by
+attach-ctl.sh in one pass) works correctly end-to-end.
+
 ## v1.0.2
 
 Second pipeline verification test — confirming Claude Code CLI can execute

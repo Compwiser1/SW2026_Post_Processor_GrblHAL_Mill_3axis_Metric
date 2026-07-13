@@ -135,6 +135,18 @@ compiled output or hardware. Do not reintroduce them.
   the repo will be picked up, so there's no need to separately instruct
   them to `git add` specific files before running the script — just
   "place these files, then run `.scripts/bump-release.sh X.Y.Z`."
+- **Don't split delivery into two separate round-trips unless there's an
+  actual reason to.** Because the maintainer can compile locally the
+  moment they receive the pre-stamped `.SRC`, they're often able to have
+  a hardware-verified `.ctl` ready *before* even touching the Codespace.
+  If the maintainer says the `.ctl` is already ready, give ONE combined
+  instruction that runs `bump-release.sh` followed immediately by
+  `attach-ctl.sh` in the same pass — don't make them come back for a
+  second message just because that used to be necessary. The safety gate
+  that matters is `attach-ctl.sh`'s own interactive confirmation prompt
+  (which still requires an explicit yes attesting to compile + stamp
+  verification + test-post + hardware test), not an artificial pause
+  between two separate chat turns.
 - If asked to review or update `FrankenOKO_Post_Notes.md` or
   `latest_release.md`, preserve the existing convention: `latest_release.md`
   is a per-release changelog (newest section on top, becomes the GitHub
